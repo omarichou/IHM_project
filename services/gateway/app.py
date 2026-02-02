@@ -153,3 +153,50 @@ def checkout():
         session['cart'] = []
         return jsonify({'status': 'ok', 'order': resp.json()}), resp.status_code
     return jsonify({'error': 'order failed', 'details': resp.text}), 500
+
+
+@app.route('/admin/categories', methods=['GET', 'POST'])
+def admin_categories():
+    vercel_url = "https://ihm-project-jade.vercel.app"
+    
+    if request.method == 'GET':
+        try:
+            resp = requests.get(f"{vercel_url}/admin/categories", timeout=5)
+            if resp.status_code == 200:
+                return resp.text
+        except Exception as e:
+            return f"Error: {str(e)}", 500
+    
+    # POST - Create category
+    try:
+        resp = requests.post(f"{vercel_url}/admin/categories", data=request.form, timeout=5)
+        if resp.status_code in (200, 302, 303):
+            return resp.text, resp.status_code
+        return resp.text, resp.status_code
+    except Exception as e:
+        return f"Error: {str(e)}", 500
+
+
+@app.route('/admin/categories/<int:cat_id>/edit', methods=['POST'])
+def edit_category(cat_id):
+    vercel_url = "https://ihm-project-jade.vercel.app"
+    try:
+        resp = requests.post(f"{vercel_url}/admin/categories/{cat_id}/edit", data=request.form, timeout=5)
+        if resp.status_code in (200, 302, 303):
+            return resp.text, resp.status_code
+        return resp.text, resp.status_code
+    except Exception as e:
+        return f"Error: {str(e)}", 500
+
+
+@app.route('/admin/categories/<int:cat_id>/delete', methods=['POST'])
+def delete_category(cat_id):
+    vercel_url = "https://ihm-project-jade.vercel.app"
+    try:
+        resp = requests.post(f"{vercel_url}/admin/categories/{cat_id}/delete", timeout=5)
+        if resp.status_code in (200, 302, 303):
+            return resp.text, resp.status_code
+        return resp.text, resp.status_code
+    except Exception as e:
+        return f"Error: {str(e)}", 500
+

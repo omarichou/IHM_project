@@ -27,8 +27,24 @@ def health():
     return jsonify({"status": "ok", "service": "dishes"})
 
 
-@app.route("/categories", methods=["GET"])
+@app.route("/categories", methods=["GET", "POST"])
 def list_categories():
+    if request.method == "POST":
+        data = request.get_json() or {}
+        name = data.get("name")
+        if not name:
+            return jsonify({"error": "name required"}), 400
+        if Category.query.filter_by(name=name).first():
+            return jsonify({"error": "Category already exists"}), 409
+        category = Category(name=name)
+        try:
+            db.session.add(category)
+            db.session.commit()
+            return jsonify({"id": category.id, "name": category.name}), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": str(e)}), 500
+    
     cats = Category.query.all()
     return jsonify([{"id": c.id, "name": c.name} for c in cats])
 
