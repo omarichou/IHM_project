@@ -5,4 +5,4 @@ Werkzeug==3.0.1
 Flask-SQLAlchemy==3.0.3
 supabase==2.3.0
 python-dotenv==1.0.0
-email-validator==2.1.0
+email-validator==2.1.0gunicorn==22.0.0

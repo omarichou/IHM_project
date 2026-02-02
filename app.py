@@ -614,4 +614,4 @@ if __name__ == '__main__':
         except Exception as e:
             print(f"Erreur lors de la création de la base de données: {str(e)}")
     
-    app.run(debug=True)
+    app.run(host=os.environ.get("HOST", "127.0.0.1"), port=int(os.environ.get("PORT", 5000)), debug=os.environ.get("FLASK_DEBUG", "True").lower() == "true")
