@@ -1,13 +1,16 @@
 from flask import Flask, request, jsonify, Response, render_template, session, redirect, url_for
 import requests
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')
 
-AUTH_URL = os.environ.get("AUTH_URL", "http://auth:5001")
-DISHES_URL = os.environ.get("DISHES_URL", "http://dishes:5002")
-ORDERS_URL = os.environ.get("ORDERS_URL", "http://orders:5003")
+AUTH_URL = os.environ.get("AUTH_URL", "https://ihm-project-jade.vercel.app/api/auth")
+DISHES_URL = os.environ.get("DISHES_URL", "https://ihm-project-jade.vercel.app/api/dishes")
+ORDERS_URL = os.environ.get("ORDERS_URL", "https://ihm-project-jade.vercel.app/api/orders")
 
 
 @app.route("/health")
