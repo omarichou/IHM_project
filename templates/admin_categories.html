@@ -1,0 +1,329 @@
+{% extends "layout.html" %}
+
+{% block title %}Gestion des Catégories - Restaurant Manager{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-header {
+        background: linear-gradient(135deg, var(--secondary-color), #34495e);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        text-align: center;
+    }
+
+    .form-card {
+        background: white;
+        border: none;
+        border-radius: 15px;
+        padding: 1.75rem;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        margin-bottom: 1.25rem;
+    }
+
+    .category-item {
+        background: white;
+        border: none;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 5px 12px rgba(0,0,0,0.06);
+        transition: transform .18s ease, box-shadow .18s ease;
+        animation: slideIn .42s ease;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .category-item:hover { transform: translateY(-3px); box-shadow: 0 10px 22px rgba(0,0,0,0.08); }
+
+    .category-icon {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.15rem;
+        flex: 0 0 auto;
+    }
+
+    /* Actions group */
+    .category-actions { display:flex; gap:.5rem; align-items:center; }
+
+    /* Inline edit form */
+    .edit-form .input-group > .form-control { min-width: 0; }
+
+    /* Responsive tweaks */
+    @media (max-width: 991.98px) {
+        .admin-header { padding: 1.4rem; }
+        .form-card { padding: 1rem; }
+        .category-icon { width:42px; height:42px; font-size:1rem; }
+    }
+
+    @media (max-width: 767.98px) {
+        .category-item { flex-direction: column; align-items: flex-start; }
+        .category-item .flex-grow-1 { width:100%; }
+        .category-actions { width:100%; justify-content: flex-start; margin-top:.5rem; gap:.5rem; flex-wrap:wrap }
+        .category-actions .btn { flex: 1 1 auto; min-width: 120px; }
+        .form-card { margin-bottom: 1rem; }
+        .admin-header h2 { font-size: 1.25rem; }
+        .category-icon { width:40px; height:40px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="admin-header text-center">
+        <h2><i class="fas fa-tags"></i> Gestion des Catégories</h2>
+        <p class="mb-0">Créez et gérez les catégories de plats</p>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="form-card">
+                <h4 class="mb-4"><i class="fas fa-plus-circle"></i> Nouvelle Catégorie</h4>
+                <form method="POST" novalidate>
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        {{ form.name.label(class="form-label") }}
+                        {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+                        {% if form.name.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.name.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    {{ form.submit(class="btn btn-primary w-100") }}
+                </form>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <h4 class="mb-4"><i class="fas fa-list"></i> Catégories Existantes</h4>
+
+            {% if categories %}
+                <div class="mb-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <button id="bulk-delete-btn" class="btn btn-sm btn-danger d-none" aria-hidden="true">Supprimer la sélection</button>
+                    </div>
+                    <div class="text-muted small">Sélectionnez des catégories pour actions en masse</div>
+                </div>
+                {% for category in categories %}
+                <div class="category-item" style="animation-delay: {{ loop.index * 0.1 }}s" data-id="{{ category.id }}">
+                    <div class="d-flex align-items-center flex-grow-1">
+                        <div class="form-check me-3">
+                            <input class="form-check-input category-checkbox" type="checkbox" value="{{ category.id }}" id="chk-{{ category.id }}" aria-label="Sélectionner {{ category.name }}">
+                        </div>
+                        <div class="category-icon me-3" aria-hidden="true">
+                            <i class="fas fa-tags"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h5 class="mb-0 category-name" id="cat-name-{{ category.id }}">{{ category.name }}</h5>
+                            <small class="text-muted">ID: {{ category.id }}</small>
+                        </div>
+                    </div>
+                    <div class="category-actions">
+                        <a href="{{ url_for('dishes_view', category=category.id) }}" class="btn btn-sm btn-outline-primary" aria-label="Voir les plats de {{ category.name }}">
+                            <i class="fas fa-eye" aria-hidden="true"></i>
+                        </a>
+                        <button class="btn btn-sm btn-outline-warning" aria-label="Éditer {{ category.name }}" onclick="openEditModal({{ category.id }}, '{{ category.name|e }}')">
+                            <i class="fas fa-edit" aria-hidden="true"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" aria-label="Supprimer {{ category.name }}" onclick="openDeleteModal({{ category.id }}, '{{ category.name|e }}')">
+                            <i class="fas fa-trash" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle fa-3x mb-3 d-block"></i>
+                    <h5>Aucune catégorie</h5>
+                    <p class="mb-0">Créez votre première catégorie pour commencer.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Accessible modal-based edit/delete with fetch API
+const apiBase = '/admin/api/categories';
+
+function openEditModal(id, name) {
+        const modal = document.getElementById('editModal');
+        document.getElementById('edit-cat-id').value = id;
+        document.getElementById('edit-cat-name').value = name;
+        document.getElementById('edit-modal-title').textContent = `Éditer : ${name}`;
+        modal.classList.add('show');
+        modal.style.display = 'block';
+        modal.setAttribute('aria-hidden', 'false');
+        document.getElementById('edit-cat-name').focus();
+}
+
+function closeEditModal() {
+        const modal = document.getElementById('editModal');
+        modal.classList.remove('show');
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+}
+
+function openDeleteModal(id, name) {
+        const modal = document.getElementById('deleteModal');
+        document.getElementById('delete-cat-id').value = id;
+        document.getElementById('delete-cat-name').textContent = name;
+        modal.classList.add('show');
+        modal.style.display = 'block';
+        modal.setAttribute('aria-hidden', 'false');
+        document.getElementById('confirm-delete-btn').focus();
+}
+
+function closeDeleteModal() {
+        const modal = document.getElementById('deleteModal');
+        modal.classList.remove('show');
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+}
+
+// Edit submit
+document.addEventListener('submit', function(e){
+        if (e.target && e.target.id === 'edit-form-main') {
+                e.preventDefault();
+                const id = parseInt(document.getElementById('edit-cat-id').value, 10);
+                const name = document.getElementById('edit-cat-name').value.trim();
+                if (!name) { showAlert('Le nom est requis', 'danger'); return; }
+                fetch(`${apiBase}/${id}`, {
+                        method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name})
+                }).then(r=>r.json().then(payload=>({status:r.status, payload}))).then(res=>{
+                        if (res.status===200) {
+                                document.getElementById(`cat-name-${id}`).textContent = res.payload.name;
+                                showAlert('Catégorie mise à jour', 'success');
+                                closeEditModal();
+                        } else {
+                                showAlert(res.payload.error || 'Erreur', 'danger');
+                        }
+                }).catch(()=>showAlert('Erreur réseau', 'danger'));
+        }
+});
+
+// Delete confirm
+document.getElementById && document.getElementById('confirm-delete-btn')?.addEventListener('click', function(){
+        const id = parseInt(document.getElementById('delete-cat-id').value, 10);
+        fetch(`${apiBase}/${id}`, { method: 'DELETE' }).then(r=>r.json().then(payload=>({status:r.status,payload}))).then(res=>{
+                if (res.status===200) {
+                        // remove from DOM
+                        const el = document.querySelector(`.category-item[data-id='${id}']`);
+                        el?.remove();
+                        showAlert('Catégorie supprimée', 'success');
+                        closeDeleteModal();
+                } else {
+                        showAlert(res.payload.error || 'Erreur', 'danger');
+                }
+        }).catch(()=>showAlert('Erreur réseau', 'danger'));
+});
+
+// Bulk selection
+const checkboxes = () => Array.from(document.querySelectorAll('.category-checkbox'));
+checkboxes().forEach(cb => cb.addEventListener('change', updateBulkUI));
+function updateBulkUI(){
+        const selected = checkboxes().filter(c=>c.checked).map(c=>c.value);
+        const btn = document.getElementById('bulk-delete-btn');
+        if (selected.length>0) { btn.classList.remove('d-none'); btn.setAttribute('aria-hidden','false'); }
+        else { btn.classList.add('d-none'); btn.setAttribute('aria-hidden','true'); }
+}
+
+document.getElementById && document.getElementById('bulk-delete-btn')?.addEventListener('click', function(){
+        const selected = checkboxes().filter(c=>c.checked).map(c=>c.value);
+        if (!selected.length) return;
+        if (!confirm(`Supprimer ${selected.length} catégories ?`)) return;
+        // sequential deletes
+        Promise.all(selected.map(id => fetch(`${apiBase}/${id}`, {method:'DELETE'}).then(r=>r.ok)))
+        .then(results => {
+                // remove successful
+                selected.forEach(id => document.querySelector(`.category-item[data-id='${id}']`)?.remove());
+                showAlert('Suppression en masse terminée', 'success');
+                document.getElementById('bulk-delete-btn').classList.add('d-none');
+        }).catch(()=>showAlert('Erreur lors de la suppression en masse', 'danger'));
+});
+
+// Small alert helper
+function showAlert(message, type='info'){
+        const area = document.getElementById('admin-alert-area');
+        if (!area) return;
+        const a = document.createElement('div');
+        a.className = `alert alert-${type} alert-dismissible`;
+        a.setAttribute('role','alert');
+        a.innerHTML = `${message} <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>`;
+        area.appendChild(a);
+        setTimeout(()=>{ a.remove(); }, 4000);
+}
+
+// Close modals on ESC
+document.addEventListener('keydown', function(e){ if (e.key==='Escape'){ closeEditModal(); closeDeleteModal(); } });
+</script>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true" aria-labelledby="edit-modal-title">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="edit-modal-title">Éditer</h5>
+                <button type="button" class="btn-close" aria-label="Fermer" onclick="closeEditModal()"></button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-form-main">
+                    <input type="hidden" id="edit-cat-id" />
+                    <div class="mb-3">
+                        <label for="edit-cat-name" class="form-label">Nom de la catégorie</label>
+                        <input id="edit-cat-name" class="form-control" maxlength="50" required />
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <button type="button" class="btn btn-secondary me-2" onclick="closeEditModal()">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true" aria-labelledby="delete-modal-title">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="delete-modal-title">Confirmer la suppression</h5>
+                <button type="button" class="btn-close" aria-label="Fermer" onclick="closeDeleteModal()"></button>
+            </div>
+            <div class="modal-body">
+                <p>Supprimer la catégorie : <strong id="delete-cat-name"></strong> ?</p>
+                <input type="hidden" id="delete-cat-id" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Annuler</button>
+                <button id="confirm-delete-btn" type="button" class="btn btn-danger">Supprimer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- alert area -->
+<div id="admin-alert-area" style="position:fixed;top:1rem;right:1rem;z-index:1050"></div>
+ 
+{% endblock %}

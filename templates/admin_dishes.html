@@ -1,0 +1,357 @@
+{% extends "layout.html" %}
+
+{% block title %}Gestion des Plats - Restaurant Manager{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-header {
+        background: linear-gradient(135deg, var(--secondary-color), #34495e);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .form-card {
+        background: white;
+        border: none;
+        border-radius: 15px;
+        padding: 2rem;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+        position: sticky;
+        top: 20px;
+    }
+
+    .dish-item {
+        background: white;
+        border: none;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        animation: slideIn 0.5s ease;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .dish-item:hover {
+        transform: translateX(10px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    }
+
+    .dish-icon {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2rem;
+    }
+
+    .price-display {
+        background: var(--primary-color);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="admin-header text-center">
+        <h2><i class="fas fa-pizza-slice"></i> Gestion des Plats</h2>
+        <p class="mb-0">Ajoutez et gérez les plats de votre restaurant</p>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="form-card">
+                <h4 class="mb-4"><i class="fas fa-plus-circle"></i> Nouveau Plat</h4>
+                <form method="POST" novalidate>
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        {{ form.name.label(class="form-label") }}
+                        {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+                        {% if form.name.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.name.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.description.label(class="form-label") }}
+                        {{ form.description(class="form-control", rows=4) }}
+                        {% if form.description.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.description.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.price.label(class="form-label") }}
+                        {{ form.price(class="form-control" + (" is-invalid" if form.price.errors else "")) }}
+                        {% if form.price.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.price.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.cost.label(class="form-label") }}
+                        {{ form.cost(class="form-control" + (" is-invalid" if form.cost.errors else "")) }}
+                        {% if form.cost.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.cost.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.category_id.label(class="form-label") }}
+                        {{ form.category_id(class="form-select" + (" is-invalid" if form.category_id.errors else "")) }}
+                        {% if form.category_id.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.category_id.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    {{ form.submit(class="btn btn-primary w-100") }}
+                </form>
+
+                {% if not form.category_id.choices %}
+                <div class="alert alert-warning mt-3">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <small>Créez d'abord une catégorie dans <a href="{{ url_for('admin_categories') }}">la page catégories</a>.</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <h4 class="mb-4"><i class="fas fa-list"></i> Plats Existants</h4>
+
+            {% if dishes %}
+                <div class="mb-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <button id="bulk-delete-dishes" class="btn btn-sm btn-danger d-none">Supprimer la sélection</button>
+                    </div>
+                    <div class="text-muted small">Sélectionnez des plats pour actions en masse</div>
+                </div>
+                {% for dish in dishes %}
+                <div class="dish-item" style="animation-delay: {{ loop.index * 0.1 }}s" data-id="{{ dish.id }}">
+                    <div class="row align-items-center">
+                        <div class="col-auto d-flex align-items-center">
+                            <div class="form-check me-2">
+                                <input class="form-check-input dish-checkbox" type="checkbox" value="{{ dish.id }}" id="dish-chk-{{ dish.id }}" aria-label="Sélectionner {{ dish.name }}">
+                            </div>
+                            <div class="dish-icon">
+                                <i class="fas fa-utensils"></i>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <h5 class="mb-1" id="dish-name-{{ dish.id }}">{{ dish.name }}</h5>
+                            <p class="text-muted mb-1" id="dish-desc-{{ dish.id }}">{{ dish.description[:80] }}{% if dish.description|length > 80 %}...{% endif %}</p>
+                            {% if dish.category %}
+                            <small class="badge bg-secondary" id="dish-cat-{{ dish.id }}">
+                                <i class="fas fa-tag"></i> {{ dish.category.name }}
+                            </small>
+                            {% else %}
+                            <small class="text-muted" id="dish-cat-{{ dish.id }}">Sans catégorie</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-auto d-flex flex-column align-items-end">
+                            <span class="price-display mb-2" id="dish-price-{{ dish.id }}">{{ "%.2f"|format(dish.price) }} DA</span>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-warning" onclick="openEditDish({{ dish.id }})" aria-label="Éditer {{ dish.name }}"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="openDeleteDish({{ dish.id }}, '{{ dish.name|e }}')" aria-label="Supprimer {{ dish.name }}"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle fa-3x mb-3 d-block"></i>
+                    <h5>Aucun plat</h5>
+                    <p class="mb-0">Ajoutez votre premier plat pour commencer.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const dishApiBase = '/admin/api/dishes';
+
+function openEditDish(id){
+    // populate modal with current values
+    const name = document.getElementById(`dish-name-${id}`).textContent.trim();
+    const desc = document.getElementById(`dish-desc-${id}`).textContent.trim();
+    const priceText = document.getElementById(`dish-price-${id}`).textContent.trim();
+    const price = priceText.split(' ')[0];
+    document.getElementById('edit-dish-id').value = id;
+    document.getElementById('edit-dish-name').value = name;
+    document.getElementById('edit-dish-desc').value = desc.replace(/\.\.\.$/, '');
+    document.getElementById('edit-dish-price').value = price;
+    // set category if available
+    const catElem = document.getElementById(`dish-cat-${id}`);
+    const catText = catElem ? catElem.textContent.trim() : '';
+    const sel = document.getElementById('edit-dish-cat');
+    if (sel) {
+        for (let o of sel.options) {
+            if (o.text === catText || o.text === catText.replace(/^\uF02B\s*/, '')) { o.selected = true; break; }
+        }
+    }
+    document.getElementById('editDishModal').style.display='block';
+    document.getElementById('editDishModal').classList.add('show');
+}
+
+function closeEditDish(){
+    document.getElementById('editDishModal').style.display='none';
+    document.getElementById('editDishModal').classList.remove('show');
+}
+
+function openDeleteDish(id, name){
+    document.getElementById('delete-dish-id').value = id;
+    document.getElementById('delete-dish-name').textContent = name;
+    document.getElementById('deleteDishModal').style.display='block';
+    document.getElementById('deleteDishModal').classList.add('show');
+}
+
+function closeDeleteDish(){
+    document.getElementById('deleteDishModal').style.display='none';
+    document.getElementById('deleteDishModal').classList.remove('show');
+}
+
+// submit edit
+document.addEventListener('submit', function(e){
+    if (e.target && e.target.id === 'edit-dish-form'){
+        e.preventDefault();
+        const id = parseInt(document.getElementById('edit-dish-id').value,10);
+        const payload = {
+            name: document.getElementById('edit-dish-name').value.trim(),
+            description: document.getElementById('edit-dish-desc').value.trim(),
+            price: parseFloat(document.getElementById('edit-dish-price').value),
+            cost: parseFloat(document.getElementById('edit-dish-cost').value) || 0,
+            category: parseInt(document.getElementById('edit-dish-cat').value) || null
+        };
+        fetch(`${dishApiBase}/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+        .then(r=>r.json().then(p=>({status:r.status,p}))).then(res=>{
+            if (res.status===200){
+                const data = res.p;
+                document.getElementById(`dish-name-${id}`).textContent = data.name;
+                document.getElementById(`dish-desc-${id}`).textContent = data.description ? (data.description.length>80?data.description.slice(0,80)+'...':data.description) : '';
+                document.getElementById(`dish-price-${id}`).textContent = data.price.toFixed(2) + ' DA';
+                document.getElementById(`dish-cat-${id}`).textContent = data.category? data.category.name : 'Sans catégorie';
+                showAlert('Plat mis à jour', 'success');
+                closeEditDish();
+            } else {
+                showAlert(res.p.error || 'Erreur', 'danger');
+            }
+        }).catch(()=>showAlert('Erreur réseau', 'danger'));
+    }
+});
+
+// delete confirm
+document.getElementById && document.getElementById('confirm-delete-dish')?.addEventListener('click', function(){
+    const id = parseInt(document.getElementById('delete-dish-id').value,10);
+    fetch(`${dishApiBase}/${id}`, { method: 'DELETE' })
+    .then(r=>r.json().then(p=>({status:r.status,p}))).then(res=>{
+        if (res.status===200){
+            document.querySelector(`.dish-item[data-id='${id}']`)?.remove();
+            showAlert('Plat supprimé', 'success');
+            closeDeleteDish();
+        } else showAlert(res.p.error || 'Erreur', 'danger');
+    }).catch(()=>showAlert('Erreur réseau', 'danger'));
+});
+
+// bulk delete
+function updateBulkDishes(){
+    const selected = Array.from(document.querySelectorAll('.dish-checkbox')).filter(c=>c.checked).map(c=>c.value);
+    const btn = document.getElementById('bulk-delete-dishes');
+    if (selected.length>0) btn.classList.remove('d-none'); else btn.classList.add('d-none');
+}
+Array.from(document.querySelectorAll('.dish-checkbox')).forEach(cb=>cb.addEventListener('change', updateBulkDishes));
+document.getElementById && document.getElementById('bulk-delete-dishes')?.addEventListener('click', function(){
+    const selected = Array.from(document.querySelectorAll('.dish-checkbox')).filter(c=>c.checked).map(c=>c.value);
+    if (!selected.length) return;
+    if (!confirm(`Supprimer ${selected.length} plats ?`)) return;
+    Promise.all(selected.map(id=>fetch(`${dishApiBase}/${id}`,{method:'DELETE'}).then(r=>r.ok))).then(()=>{
+        selected.forEach(id=>document.querySelector(`.dish-item[data-id='${id}']`)?.remove());
+        showAlert('Suppression en masse terminée', 'success');
+        document.getElementById('bulk-delete-dishes').classList.add('d-none');
+    }).catch(()=>showAlert('Erreur lors de la suppression en masse', 'danger'));
+});
+
+function showAlert(message, type='info'){
+    const area = document.getElementById('admin-alert-area');
+    if (!area) return;
+    const a = document.createElement('div');
+    a.className = `alert alert-${type} alert-dismissible`;
+    a.setAttribute('role','alert');
+    a.innerHTML = `${message} <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>`;
+    area.appendChild(a);
+    setTimeout(()=>a.remove(), 4000);
+}
+</script>
+
+<!-- Edit Dish Modal -->
+<div class="modal fade" id="editDishModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Éditer le plat</h5><button type="button" class="btn-close" onclick="closeEditDish()" aria-label="Fermer"></button></div>
+      <div class="modal-body">
+        <form id="edit-dish-form">
+          <input type="hidden" id="edit-dish-id" />
+          <div class="mb-3"><label class="form-label">Nom</label><input id="edit-dish-name" class="form-control" required /></div>
+          <div class="mb-3"><label class="form-label">Description</label><textarea id="edit-dish-desc" class="form-control" rows="3"></textarea></div>
+          <div class="row">
+            <div class="col-md-4 mb-3"><label class="form-label">Prix</label><input id="edit-dish-price" class="form-control" type="number" step="0.01" required /></div>
+            <div class="col-md-4 mb-3"><label class="form-label">Coût</label><input id="edit-dish-cost" class="form-control" type="number" step="0.01" /></div>
+            <div class="col-md-4 mb-3"><label class="form-label">Catégorie</label>
+              <select id="edit-dish-cat" class="form-select">
+                <option value="">Aucune</option>
+                {% for c in categories %}
+                <option value="{{ c.id }}">{{ c.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="d-flex justify-content-end"><button type="button" class="btn btn-secondary me-2" onclick="closeEditDish()">Annuler</button><button type="submit" class="btn btn-primary">Enregistrer</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Dish Modal -->
+<div class="modal fade" id="deleteDishModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-sm modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Confirmer</h5><button class="btn-close" onclick="closeDeleteDish()" aria-label="Fermer"></button></div><div class="modal-body">Supprimer le plat <strong id="delete-dish-name"></strong> ?<input type="hidden" id="delete-dish-id" /></div><div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="closeDeleteDish()">Annuler</button><button id="confirm-delete-dish" type="button" class="btn btn-danger">Supprimer</button></div></div></div>
+</div>
+
+<div id="admin-alert-area" style="position:fixed;top:1rem;right:1rem;z-index:1050"></div>
+
+{% endblock %}
